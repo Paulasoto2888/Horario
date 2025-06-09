@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Horario Diario Completo</title>
+  <title>Horario Diario Pro</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -14,6 +14,12 @@
 
     h1 {
       color: #333;
+    }
+
+    select {
+      padding: 8px;
+      font-size: 16px;
+      margin-bottom: 20px;
     }
 
     table {
@@ -80,6 +86,18 @@
 
   <h1>🗓️ Horario Diario Editable</h1>
 
+  <!-- Selector de día -->
+  <label for="dia">Selecciona el día:</label>
+  <select id="dia">
+    <option>Lunes</option>
+    <option>Martes</option>
+    <option>Miércoles</option>
+    <option>Jueves</option>
+    <option>Viernes</option>
+    <option>Sábado</option>
+    <option>Domingo</option>
+  </select>
+
   <table id="horario">
     <tr>
       <th>Hora</th>
@@ -99,15 +117,27 @@
 
   <script>
     const tabla = document.getElementById("horario");
+    const diaSelect = document.getElementById("dia");
+    let diaActual = diaSelect.value;
 
-    // 💾 FUNCIONES PARA GUARDAR Y RESTAURAR
-    function hacerEditableYPersistente(celda, hora) {
-      const guardado = localStorage.getItem(`actividad-${hora}`);
-      if (guardado) celda.textContent = guardado;
+    // FUNCIONES -----------------------------
+    function cargarHorario() {
+      tabla.innerHTML = `
+        <tr>
+          <th>Hora</th>
+          <th>Actividad</th>
+        </tr>
+      `;
 
-      celda.addEventListener("input", () => {
-        localStorage.setItem(`actividad-${hora}`, celda.textContent);
-      });
+      const horarioGuardado = JSON.parse(localStorage.getItem("horario-" + diaActual)) || [];
+      horarioGuardado.forEach(({ hora, actividad }) => agregarFila(hora, actividad));
+      ordenarTabla();
+    }
+
+    function guardarFila(hora, actividad) {
+      const horario = JSON.parse(localStorage.getItem("horario-" + diaActual)) || [];
+      horario.push({ hora, actividad });
+      localStorage.setItem("horario-" + diaActual, JSON.stringify(horario));
     }
 
     function agregarFila(hora, actividad) {
@@ -120,58 +150,56 @@
       celdaActividad.contentEditable = "true";
       celdaActividad.dataset.hora = hora;
 
-      hacerEditableYPersistente(celdaActividad, hora);
+      celdaActividad.addEventListener("input", () => {
+        const horario = JSON.parse(localStorage.getItem("horario-" + diaActual)) || [];
+        const index = horario.findIndex(item => item.hora === hora);
+        if (index !== -1) {
+          horario[index].actividad = celdaActividad.textContent;
+          localStorage.setItem("horario-" + diaActual, JSON.stringify(horario));
+        }
+      });
     }
 
-    function ordenarTablaPorHora() {
+    function ordenarTabla() {
       const filas = Array.from(tabla.rows).slice(1);
-      filas.sort((a, b) => {
-        const horaA = a.cells[0].textContent;
-        const horaB = b.cells[0].textContent;
-        return horaA.localeCompare(horaB);
-      });
+      filas.sort((a, b) => a.cells[0].textContent.localeCompare(b.cells[0].textContent));
       filas.forEach(fila => tabla.appendChild(fila));
     }
 
-    // 🔁 RESTAURAR TABLA COMPLETA
-    let horarioGuardado = JSON.parse(localStorage.getItem("horarioCompleto")) || [];
-    horarioGuardado.forEach(({ hora, actividad }) => agregarFila(hora, actividad));
-    ordenarTablaPorHora();
-
-    // 🎨 CAMBIO DE FONDO
-    const botonFondo = document.getElementById("cambiarEstilo");
-    let fondoClaro = true;
-    botonFondo.addEventListener("click", () => {
-      document.body.style.backgroundColor = fondoClaro ? "#d0e8f2" : "#f5f5f5";
-      fondoClaro = !fondoClaro;
-    });
-
-    // 🧹 BORRAR TODO
-    const borrarBtn = document.getElementById("borrarTodo");
-    borrarBtn.addEventListener("click", () => {
-      if (confirm("¿Seguro que quieres borrar todo el horario?")) {
-        localStorage.clear();
-        location.reload();
-      }
-    });
-
-    // ➕ FORMULARIO PARA AÑADIR NUEVAS FILAS
-    const form = document.getElementById("formulario");
-    form.addEventListener("submit", (e) => {
+    // EVENTOS -------------------------------
+    document.getElementById("formulario").addEventListener("submit", e => {
       e.preventDefault();
       const hora = document.getElementById("nuevaHora").value;
       const actividad = document.getElementById("nuevaActividad").value;
       if (!hora || !actividad) return;
 
       agregarFila(hora, actividad);
-
-      // Guardar nueva fila
-      horarioGuardado.push({ hora, actividad });
-      localStorage.setItem("horarioCompleto", JSON.stringify(horarioGuardado));
-
-      form.reset();
-      ordenarTablaPorHora();
+      guardarFila(hora, actividad);
+      ordenarTabla();
+      e.target.reset();
     });
+
+    diaSelect.addEventListener("change", () => {
+      diaActual = diaSelect.value;
+      cargarHorario();
+    });
+
+    document.getElementById("cambiarEstilo").addEventListener("click", () => {
+      const fondoClaro = document.body.style.backgroundColor === "rgb(213, 232, 242)";
+      document.body.style.backgroundColor = fondoClaro ? "#f5f5f5" : "#d5e8f2";
+    });
+
+    document.getElementById("borrarTodo").addEventListener("click", () => {
+      if (confirm("¿Seguro que quieres borrar todos los horarios?")) {
+        Object.keys(localStorage).forEach(key => {
+          if (key.startsWith("horario-")) localStorage.removeItem(key);
+        });
+        cargarHorario();
+      }
+    });
+
+    // INICIO -------------------------------
+    cargarHorario();
   </script>
 
 </body>
