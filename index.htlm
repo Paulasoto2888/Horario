@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Horario Diario Completo</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      text-align: center;
+      padding: 30px;
+    }
+
+    h1 {
+      color: #333;
+    }
+
+    table {
+      margin: 0 auto;
+      border-collapse: collapse;
+      width: 60%;
+    }
+
+    th, td {
+      border: 1px solid #999;
+      padding: 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #e9e9e9;
+    }
+
+    td[contenteditable] {
+      background-color: #fffbe6;
+      cursor: text;
+    }
+
+    td[contenteditable]:focus {
+      outline: 2px solid #007bff;
+    }
+
+    button {
+      margin: 10px 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #cambiarEstilo {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    #borrarTodo {
+      background-color: #dc3545;
+      color: white;
+    }
+
+    form {
+      margin-top: 30px;
+    }
+
+    input, form button {
+      padding: 8px;
+      font-size: 16px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🗓️ Horario Diario Editable</h1>
+
+  <table id="horario">
+    <tr>
+      <th>Hora</th>
+      <th>Actividad</th>
+    </tr>
+  </table>
+
+  <button id="cambiarEstilo">Cambiar color de fondo</button>
+  <button id="borrarTodo">🗑️ Borrar todo el horario</button>
+
+  <h2>Añadir nueva actividad</h2>
+  <form id="formulario">
+    <input type="time" id="nuevaHora" required />
+    <input type="text" id="nuevaActividad" placeholder="Actividad" required />
+    <button type="submit">Agregar</button>
+  </form>
+
+  <script>
+    const tabla = document.getElementById("horario");
+
+    // 💾 FUNCIONES PARA GUARDAR Y RESTAURAR
+    function hacerEditableYPersistente(celda, hora) {
+      const guardado = localStorage.getItem(`actividad-${hora}`);
+      if (guardado) celda.textContent = guardado;
+
+      celda.addEventListener("input", () => {
+        localStorage.setItem(`actividad-${hora}`, celda.textContent);
+      });
+    }
+
+    function agregarFila(hora, actividad) {
+      const fila = tabla.insertRow();
+      const celdaHora = fila.insertCell();
+      const celdaActividad = fila.insertCell();
+
+      celdaHora.textContent = hora;
+      celdaActividad.textContent = actividad;
+      celdaActividad.contentEditable = "true";
+      celdaActividad.dataset.hora = hora;
+
+      hacerEditableYPersistente(celdaActividad, hora);
+    }
+
+    function ordenarTablaPorHora() {
+      const filas = Array.from(tabla.rows).slice(1);
+      filas.sort((a, b) => {
+        const horaA = a.cells[0].textContent;
+        const horaB = b.cells[0].textContent;
+        return horaA.localeCompare(horaB);
+      });
+      filas.forEach(fila => tabla.appendChild(fila));
+    }
+
+    // 🔁 RESTAURAR TABLA COMPLETA
+    let horarioGuardado = JSON.parse(localStorage.getItem("horarioCompleto")) || [];
+    horarioGuardado.forEach(({ hora, actividad }) => agregarFila(hora, actividad));
+    ordenarTablaPorHora();
+
+    // 🎨 CAMBIO DE FONDO
+    const botonFondo = document.getElementById("cambiarEstilo");
+    let fondoClaro = true;
+    botonFondo.addEventListener("click", () => {
+      document.body.style.backgroundColor = fondoClaro ? "#d0e8f2" : "#f5f5f5";
+      fondoClaro = !fondoClaro;
+    });
+
+    // 🧹 BORRAR TODO
+    const borrarBtn = document.getElementById("borrarTodo");
+    borrarBtn.addEventListener("click", () => {
+      if (confirm("¿Seguro que quieres borrar todo el horario?")) {
+        localStorage.clear();
+        location.reload();
+      }
+    });
+
+    // ➕ FORMULARIO PARA AÑADIR NUEVAS FILAS
+    const form = document.getElementById("formulario");
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const hora = document.getElementById("nuevaHora").value;
+      const actividad = document.getElementById("nuevaActividad").value;
+      if (!hora || !actividad) return;
+
+      agregarFila(hora, actividad);
+
+      // Guardar nueva fila
+      horarioGuardado.push({ hora, actividad });
+      localStorage.setItem("horarioCompleto", JSON.stringify(horarioGuardado));
+
+      form.reset();
+      ordenarTablaPorHora();
+    });
+  </script>
+
+</body>
+</html>
